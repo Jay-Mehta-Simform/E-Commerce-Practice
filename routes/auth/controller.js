@@ -2,7 +2,7 @@
 const { readFile, writeFile } = require("fs/promises")
 const jwt = require("jsonwebtoken")
 const User = require("../../models/user")
-const { userDataPath } = require("../../config/const")
+const { userDataPath } = require("../../config-files/const")
 
 exports.signIn = async (req, res, next) => {
 	let users = await readFile(userDataPath)
