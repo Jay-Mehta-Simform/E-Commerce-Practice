@@ -1,19 +1,36 @@
 // const fs = require("fs")
 const { readFile, writeFile } = require("fs/promises")
 const jwt = require("jsonwebtoken")
+const { validationResult } = require("express-validator")
 const User = require("../../models/user")
 const { userDataPath, tokenDataPath } = require("../../config-files/const")
 
+//? Takes in UserName and Password and return Access Token and Refresh Token.
 exports.signIn = async (req, res, next) => {
-	let users = await readFile(userDataPath)
+	//Checking the results of Express-Validator middleware
+	const validatorResult = validationResult(req)
+	if (validatorResult.errors.length != 0) {
+		return res.status(400).send(validatorResult.errors[0].msg)
+	}
+
+	let users = JSON.parse(await readFile(userDataPath))
+
+	let user = users.find((iterator) => iterator.name == req.body.name)
+
 	let refreshTokens = JSON.parse(await readFile(tokenDataPath))
-	let usersJson = JSON.parse(users)
-	let user = usersJson.find((iterator) => iterator.name == req.body.name)
+
 	if (user) {
+		if (user.password != req.body.password) {
+			return res.status(400).send("Invalid Password")
+		}
 		let accessToken = generateAccessToken(user)
-		let refreshToken = jwt.sign(user, process.env.REFRESH_TOKEN_SECRET)
-		refreshTokens.push(refreshToken)
-		await writeFile(tokenDataPath, JSON.stringify(refreshTokens))
+		let refreshToken = refreshTokens.filter((token) => token.id == user.id)[0]
+		if (refreshToken == null) {
+			refreshToken = { id: user.id }
+			refreshToken.token = jwt.sign(user, process.env.REFRESH_TOKEN_SECRET)
+			refreshTokens.push(refreshToken)
+			await writeFile(tokenDataPath, JSON.stringify(refreshTokens))
+		}
 		res.status(200).json({ accessToken: accessToken, refreshToken: refreshToken })
 	} else res.status(401).send("Not a user!")
 }
