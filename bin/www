@@ -8,7 +8,7 @@ var app = require("../app")
 var debug = require("debug")("e-commerce:server")
 var http = require("http")
 const path = require("path")
-let x = require("dotenv").config({ path: path.join(__dirname, "..", "config-files", ".env") })
+require("dotenv").config({ path: path.join(__dirname, "..", "config-files", ".env") })
 
 /**
  * Get port from environment and store in Express.

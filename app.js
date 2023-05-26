@@ -4,8 +4,14 @@ var path = require("path")
 var cookieParser = require("cookie-parser")
 var logger = require("morgan")
 
+require("dotenv").config({ path: path.join(__dirname, "config-files", ".env") })
+
 var indexRouter = require("./routes/index")
 // var usersRouter = require("./routes/users")
+
+// For Session and Cookies:-
+const session = require("express-session")
+const filestore = require("session-file-store")(session)
 
 var app = express()
 
@@ -13,6 +19,16 @@ var app = express()
 app.set("views", path.join(__dirname, "views"))
 app.set("view engine", "ejs")
 
+// Creating session
+app.use(
+	session({
+		name: "session-id",
+		secret: process.env.SESSION_SECRET, // Secret key,
+		// saveUninitialized: false,
+		// resave: false,
+		store: new filestore(),
+	})
+)
 app.use(logger("dev"))
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
