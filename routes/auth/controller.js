@@ -6,40 +6,67 @@ const User = require("../../models/user")
 const { userDataPath, tokenDataPath } = require("../../config-files/const")
 
 //? Takes in UserName and Password and return Access Token and Refresh Token.
+// exports.signIn = async (req, res, next) => {
+// 	//Checking the results of Express-Validator middleware
+// 	const validatorResult = validationResult(req)
+// 	if (validatorResult.errors.length != 0) {
+// 		return res.status(400).send(validatorResult.errors[0].msg)
+// 	}
+
+// 	// Checking if user exists
+// 	let users = JSON.parse(await readFile(userDataPath))
+// 	let user = users.find((iterator) => iterator.name == req.body.name)
+
+// 	// Reading the list of registered refreshTokens
+// 	let refreshTokens = JSON.parse(await readFile(tokenDataPath))
+
+// 	if (user) {
+// 		// If user exists, check password
+// 		if (!(await bcrypt.compare(req.body.password, user.password))) {
+// 			return res.status(400).send("Invalid Password")
+// 		}
+// 		// Send Access and Refresh Token
+// 		let accessToken = generateAccessToken(user)
+// 		let refreshToken = refreshTokens.filter((token) => token.id == user.id)[0]
+// 		if (refreshToken == null) {
+// 			refreshToken = { id: user.id }
+// 			refreshToken.token = jwt.sign(user, process.env.REFRESH_TOKEN_SECRET)
+// 			refreshTokens.push(refreshToken)
+// 			try {
+// 				await writeFile(tokenDataPath, JSON.stringify(refreshTokens))
+// 			} catch (error) {
+// 				res.status(500).send("Couldn't write data!")
+// 			}
+// 		}
+// 		res.status(200).json({ accessToken: accessToken, refreshToken: refreshToken })
+// 	} else res.status(401).send("Not a user!")
+// }
+
+//? Session - cookies implementation
 exports.signIn = async (req, res, next) => {
 	//Checking the results of Express-Validator middleware
 	const validatorResult = validationResult(req)
 	if (validatorResult.errors.length != 0) {
 		return res.status(400).send(validatorResult.errors[0].msg)
 	}
-
 	// Checking if user exists
 	let users = JSON.parse(await readFile(userDataPath))
 	let user = users.find((iterator) => iterator.name == req.body.name)
-
-	// Reading the list of registered refreshTokens
-	let refreshTokens = JSON.parse(await readFile(tokenDataPath))
 
 	if (user) {
 		// If user exists, check password
 		if (!(await bcrypt.compare(req.body.password, user.password))) {
 			return res.status(400).send("Invalid Password")
 		}
-		// Send Access and Refresh Token
-		let accessToken = generateAccessToken(user)
-		let refreshToken = refreshTokens.filter((token) => token.id == user.id)[0]
-		if (refreshToken == null) {
-			refreshToken = { id: user.id }
-			refreshToken.token = jwt.sign(user, process.env.REFRESH_TOKEN_SECRET)
-			refreshTokens.push(refreshToken)
-			try {
-				await writeFile(tokenDataPath, JSON.stringify(refreshTokens))
-			} catch (error) {
-				res.status(500).send("Couldn't write data!")
-			}
+		// Check if session exists and if not, create a new session
+		if (!req.session.authorized || !req.session) {
+			req.session.user = user
+			req.session.authorized = true
+			res.status(200).send("Session Created")
+		} else {
+			return res.status(200).send("Session already established!")
 		}
-		res.status(200).json({ accessToken: accessToken, refreshToken: refreshToken })
-	} else res.status(401).send("Not a user!")
+	} else return res.status(401).send("Not a user!")
 }
 
 //? Input: name, role and password ----- Output: Confirmation or Error
@@ -102,14 +129,23 @@ exports.refreshToken = async (req, res, next) => {
 }
 
 //? Middleware to authenticate user
+// exports.authenticateToken = (req, res, next) => {
+// 	const token = req.headers["authorization"]
+// 	if (token == null) return res.sendStatus(401)
+// 	jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
+// 		if (err) return res.sendStatus(403)
+// 		req.body.user = user
+// 		next()
+// 	})
+// }
+
+//? Session-Cookies Implementation
 exports.authenticateToken = (req, res, next) => {
-	const token = req.headers["authorization"]
-	if (token == null) return res.sendStatus(401)
-	jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
-		if (err) return res.sendStatus(403)
-		req.body.user = user
+	if (req.session.authorized) {
 		next()
-	})
+	} else {
+		res.sendStatus(403)
+	}
 }
 
 //? Utility function to generate JWT Access Token

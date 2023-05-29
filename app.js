@@ -3,6 +3,7 @@ var express = require("express")
 var path = require("path")
 var cookieParser = require("cookie-parser")
 var logger = require("morgan")
+const { sessionDataPath } = require("./config-files/const")
 
 require("dotenv").config({ path: path.join(__dirname, "config-files", ".env") })
 
@@ -26,7 +27,11 @@ app.use(
 		secret: process.env.SESSION_SECRET, // Secret key,
 		// saveUninitialized: false,
 		// resave: false,
-		store: new filestore(),
+		store: new filestore({
+			path: sessionDataPath,
+			ttl: 60,
+			reapInterval: 60,
+		}),
 	})
 )
 app.use(logger("dev"))
